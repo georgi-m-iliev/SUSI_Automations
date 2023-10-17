@@ -23,7 +23,7 @@ def siren(duration, frequency=1000, delta=50):
         frequency += delta
 
 
-def extract_vstate_eventvalidatoin(soup: BeautifulSoup) -> Tuple[str, str]:
+def extract_vstate_eventvalidation(soup: BeautifulSoup) -> Tuple[str, str]:
     __vstate = soup.find('input', id='__VSTATE').get('value')
     __eventvalidation = soup.find('input', id='__EVENTVALIDATION').get('value')
     return __vstate, __eventvalidation
@@ -53,7 +53,7 @@ def login_and_get_cookies():
     print('Logging in... ', end='')
 
     login_page_soup = BeautifulSoup(requests.get(os.getenv('LOGIN_URL')).text, 'html.parser')
-    __vstate, __eventvalidation = extract_vstate_eventvalidatoin(login_page_soup)
+    __vstate, __eventvalidation = extract_vstate_eventvalidation(login_page_soup)
 
     session = requests.Session()
     login_response = session.post(
@@ -178,7 +178,7 @@ def execute_sequence():
     wait_campaign_start(os.getenv('CAMPAIGN_START_DATE'))
 
     electives_soup = get_electives_page(cookies)
-    __vstate, __eventvalidation = extract_vstate_eventvalidatoin(electives_soup)
+    __vstate, __eventvalidation = extract_vstate_eventvalidation(electives_soup)
     electives = get_electives(electives_soup)
 
     wanted_electives = ['Алгебра 2', 'Теория на игрите']
