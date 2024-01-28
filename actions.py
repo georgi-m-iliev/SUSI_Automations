@@ -7,10 +7,14 @@ from functions import *
 from models import ElectivesCategory
 
 
-def authenticate(session: requests.Session):
+def authenticate(session: requests.Session, progress_iter):
+    progress_iter = iter(progress_iter)
     vstate_eventvalidation_request = session.get(os.getenv('LOGIN_URL'))
+    next(progress_iter)
+
     vstate_eventvalidation_page_soup = BeautifulSoup(vstate_eventvalidation_request.text, 'html.parser')
     vstate, eventvalidation = extract_vstate_eventvalidation(vstate_eventvalidation_page_soup)
+    next(progress_iter)
 
     login_response = session.post(
         url=os.getenv('LOGIN_URL'),
@@ -26,17 +30,26 @@ def authenticate(session: requests.Session):
         },
         headers=json.loads(os.getenv('HEADERS')),
     )
+    next(progress_iter)
 
     if login_response.status_code != 200:
         raise Exception('Failed to authenticate!')
+    try:
+        next(progress_iter)
+    except StopIteration:
+        pass
+    return login_response
 
 
-def fetch_available_electives(session: requests.Session, categories: ElectivesCategory) -> list:
+def fetch_available_electives(session: requests.Session, categories: ElectivesCategory, progress_iter) -> list:
     """ Returns a list of all electives names from queries tab. """
+    progress_iter = iter(progress_iter)
+
     vstate_eventvalidation_request = session.get(os.getenv('PREFETCH_ELECTIVES_URL'))
     vstate, eventvalidation = extract_vstate_eventvalidation(
         BeautifulSoup(vstate_eventvalidation_request.text, 'html.parser')
     )
+    next(progress_iter)
 
     electives_names_request = session.post(
         os.getenv('PREFETCH_ELECTIVES_URL'),
@@ -58,6 +71,10 @@ def fetch_available_electives(session: requests.Session, categories: ElectivesCa
         },
         headers=json.loads(os.getenv('HEADERS')),
     )
+    try:
+        next(progress_iter)
+    except StopIteration:
+        pass
 
     return extract_electives_from_queries(electives_names_request)
 
@@ -68,10 +85,10 @@ def fetch_electives_ids(session: requests.Session):
     return extract_electives_ids(electives_request)
 
 
-def enroll_selected_electives(session: requests.Session, wanted_electives: list, available_electives: dict):
+def enroll_selected_electives(session: requests.Session, wanted_electives: list, available_electives_ids: dict):
     enrollment_request = session.post(
         url=os.getenv('ELECTIVES_URL'),
-        data=prepare_electives_form_data(session, wanted_electives, available_electives),
+        data=prepare_electives_form_data(session, wanted_electives, available_electives_ids),
         headers=json.loads(os.getenv('HEADERS')),
     )
 
