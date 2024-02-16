@@ -51,8 +51,7 @@ def get_credentials():
 def print_available_electives(electives: list):
     table = PrettyTable()
     table.title = 'Налични избираеми предмети'
-    table.add_column("", electives[:len(electives) // 2])
-    table.add_column("", electives[len(electives) // 2:])
+    table.add_column("", electives)
     print(table)
     print('\n')
 

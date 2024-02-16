@@ -1,4 +1,5 @@
-import requests
+import requests, pickle
+from requests.adapters import HTTPAdapter, Retry
 from dotenv import load_dotenv
 from prompt_toolkit import PromptSession
 from prompt_toolkit.shortcuts import ProgressBar
@@ -18,26 +19,38 @@ def run():
     get_credentials()
 
     session = requests.Session()
+    retries = Retry(total=100,
+                    backoff_factor=0.1,
+                    status_forcelist=[500, 502, 503, 504])
+    session.mount('https://', HTTPAdapter(max_retries=retries))
 
-    with ProgressBar() as pb:
-        progress_iter = pb(range(3), label='Вписване...')
-        authenticate(session, progress_iter)
-    print('Успешно вписан!\n')
+    if os.path.exists('session'):
+        with open('session', 'rb') as f:
+            session.cookies.update(pickle.load(f))
 
+    if session.cookies:
+        print('Успешно вписан!')
+    else:
+        with ProgressBar() as pb:
+            progress_iter = pb(range(3), label='Вписване...')
+            authenticate(session, progress_iter)
+        print('Успешно вписан!\n')
+    electives_categories = ElectivesCategory(
+        discipline_type=ElectivesCategory.ElectiveType.ELECTIVE,
+        plan_type=ElectivesCategory.ElectivePlanType.INCLUDED_IN_EDUCATION_PLAN_OTHERS,
+        semester=ElectivesCategory.Semester.SUMMER,
+        year=2023
+    )
     with ProgressBar() as pb:
         progress_iter = pb(range(1), label='Извличане на избираеми...')
-        electives_categories = ElectivesCategory(
-            discipline_type=ElectivesCategory.ElectiveType.ELECTIVE,
-            plan_type=ElectivesCategory.ElectivePlanType.INCLUDED_IN_EDUCATION_PLAN_CURRENT,
-            semester=ElectivesCategory.Semester.WINTER,
-            year=2023
-        )
+
         available_electives = fetch_available_electives(session, electives_categories, progress_iter)
         print('\nИзбираемите са извлечени успешно!')
         time.sleep(2)
 
     # sort electives by length
     available_electives.sort(key=len)
+    print(available_electives)
 
     verified_selection = []
     selected_electives = []
@@ -68,14 +81,14 @@ def run():
         with ProgressBar() as pb:
             progress_iter = iter(pb(range(2), label='Извличане на id на избираеми за form-data...'))
             next(progress_iter)
-            electives_ids = fetch_electives_ids(session)
+            electives_ids = fetch_electives_ids(session, electives_categories)
             try:
                 next(progress_iter)
             except StopIteration:
                 pass
             progress_iter = iter(pb(range(2), label='Записване за избираеми...'))
             next(progress_iter)
-            enroll_selected_electives(session, selected_electives, electives_ids)
+            enroll_selected_electives(session, electives_categories, selected_electives, electives_ids)
             try:
                 next(progress_iter)
             except StopIteration:

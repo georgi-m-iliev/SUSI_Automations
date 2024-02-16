@@ -1,5 +1,6 @@
 import os
 import json
+import pickle
 import requests
 from bs4 import BeautifulSoup
 
@@ -38,6 +39,9 @@ def authenticate(session: requests.Session, progress_iter):
         next(progress_iter)
     except StopIteration:
         pass
+    # Save session to file
+    with open('session', 'wb') as f:
+        pickle.dump(session.cookies, f)
     return login_response
 
 
@@ -79,16 +83,36 @@ def fetch_available_electives(session: requests.Session, categories: ElectivesCa
     return extract_electives_from_queries(electives_names_request)
 
 
-def fetch_electives_ids(session: requests.Session):
+def fetch_electives_ids(session: requests.Session, categories: ElectivesCategory):
     electives_request = session.get(os.getenv('ELECTIVES_URL'))
+    vstate, eventvalidation = extract_vstate_eventvalidation(BeautifulSoup(electives_request.text, 'html.parser'))
+    electives_request = session.post(
+        url=os.getenv('ELECTIVES_URL'),
+        data={
+            'SelectSemesterSessionMultiple1:cboSemester': categories.semester.value,
+            'SelectSemesterSessionMultiple1:cboYearSemester': categories.year,
+            'SelectSemesterSessionMultiple1:rptSemestriality:_ctl0:chkSemestriality': '1',
+            'SelectSemesterSessionMultiple1:rptSemestriality:_ctl1:chkSemestriality': '2',
+            'SelectSemesterSessionMultiple1:rptSemestriality:_ctl2:chkSemestriality': '3',
+            'SelectSemesterSessionMultiple1:rptSemestriality:_ctl3:chkSemestriality': '4',
+            'SelectSemesterSessionMultiple1:rptSemestriality:_ctl4:chkSemestriality': '5',
+            '__VIEWSTATE': '',
+            '__EVENTVALIDATION': eventvalidation,
+            '__VSTATE': vstate,
+            'cboCategories': '-1',
+            'disciplineType': categories.discipline_type.value,
+            'includedInEducationPlan': categories.plan_type.value,
+        },
+        headers=json.loads(os.getenv('HEADERS')),
+    )
 
     return extract_electives_ids(electives_request)
 
 
-def enroll_selected_electives(session: requests.Session, wanted_electives: list, available_electives_ids: dict):
+def enroll_selected_electives(session: requests.Session, categories: ElectivesCategory, wanted_electives: list, available_electives_ids: dict):
     enrollment_request = session.post(
         url=os.getenv('ELECTIVES_URL'),
-        data=prepare_electives_form_data(session, wanted_electives, available_electives_ids),
+        data=prepare_electives_form_data(session, categories, wanted_electives, available_electives_ids),
         headers=json.loads(os.getenv('HEADERS')),
     )
 
