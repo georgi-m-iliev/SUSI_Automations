@@ -1,5 +1,7 @@
 # SUSI Automations
 
+[![Windows Release](https://github.com/georgi-m-iliev/SUSI_Automations/actions/workflows/release.yaml/badge.svg)](https://github.com/georgi-m-iliev/SUSI_Automations/actions/workflows/release.yaml)
+
 This repository contains my project for automating the enrollment in
 electives through the SUSI system of the Sofia University.
 
