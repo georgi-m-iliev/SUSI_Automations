@@ -33,6 +33,11 @@ The workflow is as follows:
 The app is released with the pyinstaller module which builds the app as a standalone executable.
 You can find the latest version in the releases section of the repository.
 
+## To Do in the future
+
+* Enroll for multiple kind of electives in one go
+* Cover all corner cases and provide feedback
+
 ## Contributing
 
 If you want to contribute to the project, you can open an issue or a pull request. I will be happy to discuss any ideas for improvement.
