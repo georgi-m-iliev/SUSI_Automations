@@ -1,4 +1,4 @@
-name: Windows Release
+name: Build releases for Windows and Linux
 
 on:
     push:
@@ -15,7 +15,7 @@ concurrency:
     cancel-in-progress: true
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
 
     steps:
@@ -24,14 +24,47 @@ jobs:
       - name: 'Set up Python 3.10'
         uses: actions/setup-python@v2
         with:
-          python-version: 3.10
+          python-version: '3.10'
       - name: Install dependencies
         run: 'pip install -r requirements.txt'
       - name: 'Run PyInstaller to build the executable'
         run: |
           pyinstaller --onefile main.py --name susi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 'susi-windows-${{github.ref_name}}'
+          path: 'dist/susi.exe'
+
+  build-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 'Checkout code'
+        uses: actions/checkout@v3
+      - name: 'Set up Python 3.10'
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: 'pip install -r requirements.txt'
+      - name: 'Run PyInstaller to build the executable'
+        run: |
+          pyinstaller --onefile main.py --name susi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 'susi-linux-${{github.ref_name}}'
+          path: 'dist/susi'
+
+  release:
+    needs: [build-windows, build-linux]
+
+    runs-on: ubuntu-latest
+
+    steps:
       - name: 'Release the build'
         uses: ncipollo/release-action@v1
         with:
           name: 'Release - ${{github.ref_name}}'
-          artifacts: 'dist/susi.exe'
+          artifacts: 'susi-windows-${{github.ref_name}},susi-linux-${{github.ref_name}}'
+    
+
