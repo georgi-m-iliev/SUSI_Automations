@@ -11,41 +11,35 @@ from functions import visualize_response
 
 
 def setup():
-    pass
+    disclaimer()
+
+    if not os.getenv('USERNAME') or not os.getenv('PASSWORD'):
+        get_credentials()
 
 
 def run():
-    disclaimer()
-    get_credentials()
-
     session = requests.Session()
     retries = Retry(total=100,
                     backoff_factor=0.1,
                     status_forcelist=[500, 502, 503, 504])
     session.mount('https://', HTTPAdapter(max_retries=retries))
 
-    if os.path.exists('session'):
-        with open('session', 'rb') as f:
-            session.cookies.update(pickle.load(f))
-
-    if session.cookies:
-        print('Успешно вписан!')
-    else:
-        with ProgressBar() as pb:
-            progress_iter = pb(range(3), label='Вписване...')
-            authenticate(session, progress_iter)
+    with ProgressBar() as pb:
+        progress_iter = pb(range(3), label='Вписване...')
+        authenticate(session, progress_iter)
         print('Успешно вписан!\n')
-    electives_categories = ElectivesCategory(
-        discipline_type=ElectivesCategory.ElectiveType.ELECTIVE,
-        plan_type=ElectivesCategory.ElectivePlanType.INCLUDED_IN_EDUCATION_PLAN_OTHERS,
-        semester=ElectivesCategory.Semester.SUMMER,
-        year=2023
-    )
+
+    if not os.getenv('CAMPAIGN_START_DATE'):
+        campaign_start = get_campaign_start_date()
+    else:
+        campaign_start = datetime.datetime.strptime(os.getenv('CAMPAIGN_START_DATE'), '%Y-%m-%d')
+    electives_categories = select_electives_categories()
+
     with ProgressBar() as pb:
         progress_iter = pb(range(1), label='Извличане на избираеми...')
 
         available_electives = fetch_available_electives(session, electives_categories, progress_iter)
-        print('\nИзбираемите са извлечени успешно!')
+        # print('\nИзбираемите са извлечени успешно!')
         time.sleep(2)
 
     # sort electives by length
@@ -75,6 +69,10 @@ def run():
         if not last_confirmation_before_post_result:
             continue
 
+    countdown_to_campaign(campaign_start)
+    # wait 5 secs before posting
+    time.sleep(5)
+
     # clear console
     print("\033[H\033[J")
     if last_confirmation_before_post_result:
@@ -88,16 +86,16 @@ def run():
                 pass
             progress_iter = iter(pb(range(2), label='Записване за избираеми...'))
             next(progress_iter)
-            enroll_selected_electives(session, electives_categories, selected_electives, electives_ids)
+            result = enroll_selected_electives(session, electives_categories, selected_electives, electives_ids)
             try:
                 next(progress_iter)
             except StopIteration:
                 pass
-            success_message(selected_electives)
-            #TODO: add visualization of
+            if success_message(selected_electives):
+                visualize_response(result)
 
     else:
-        print('Край!')
+        print('Чао!')
 
 
 def main():

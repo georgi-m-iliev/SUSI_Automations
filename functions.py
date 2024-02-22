@@ -9,6 +9,8 @@ from bs4 import BeautifulSoup
 
 from models import ElectivesCategory
 
+ELECTIVES_URL = 'https://susi.uni-sofia.bg/ISSU/forms/students/ElectiveDisciplinesSubscribe.aspx'
+
 
 def visualize_response(response: requests.models.Response):
     """ Creates a temporary file with the response and opens it in the default browser. """
@@ -62,14 +64,14 @@ def extract_electives_ids(electives_request: requests.Response) -> dict:
             elective_id = None
         else:
             elective_id = row.find('select')['name']
-        print(f'Found {elective_name}: {elective_id}')
+        # print(f'Found {elective_name}: {elective_id}')
         electives_ids[elective_name] = elective_id
 
     return electives_ids
 
 
 def prepare_electives_form_data(session: requests.Session, categories: ElectivesCategory, wanted_electives: list, available_electives: dict) -> dict:
-    vstate_eventvalidation_request = session.get(os.getenv('ELECTIVES_URL'))
+    vstate_eventvalidation_request = session.get(ELECTIVES_URL)
     vstate, eventvalidation = extract_vstate_eventvalidation(
         BeautifulSoup(vstate_eventvalidation_request.text, 'html.parser')
     )
@@ -94,3 +96,13 @@ def prepare_electives_form_data(session: requests.Session, categories: Electives
         form_data[available_electives[elective]] = '1'
 
     return form_data
+
+
+def save_to_env(key, value):
+    from dotenv import set_key
+    from pathlib import Path
+
+    env_file_path = Path('.env')
+    env_file_path.touch(mode=0o600, exist_ok=False)
+    # Save some values to the file.
+    set_key(dotenv_path=env_file_path, key_to_set=key, value_to_set=value)
